@@ -1,0 +1,12 @@
+{
+  "name": "finanzen",
+  "version": "1.0.0",
+  "description": "Eine persönliche Finanz-App",
+  "license": "ISC",
+  "author": "Cric_Hammel",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
