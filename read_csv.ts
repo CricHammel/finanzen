@@ -54,7 +54,7 @@ function determineHeaderRows(data: string): number {
 }
 
 function parseHeader(data: string, headerRows: number): Header {
-    const header = data.split("\n").slice(0, headerRows - 1);
+    const header = data.split("\n").slice(0, headerRows);
     const ibanRow = header.find((v) => v.startsWith("IBAN"));
     const accountNameRow = header.find((v) => v.startsWith("Kontoname"));
     const bankRow = header.find((v) => v.startsWith("Bank"));
