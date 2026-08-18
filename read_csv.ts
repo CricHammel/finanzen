@@ -1,7 +1,5 @@
 import { readFileSync } from "node:fs";
 
-const CSV_HEADER_ROWS = 13;
-
 type ISODate = string;
 
 type Header = {
@@ -46,8 +44,19 @@ function readExport(path: string): string {
     return text;
 }
 
-function parseHeader(data: string): Header {
-    const header = data.split("\n").slice(0, CSV_HEADER_ROWS - 1);
+function determineHeaderRows(data: string): number {
+    const rows = data.split("\n");
+    const headerRows = rows.findIndex((v) => {
+        if (v.startsWith("Buchung")) return true;
+    });
+    if (headerRows === -1) {
+        throw new Error("No first row!");
+    }
+    return headerRows;
+}
+
+function parseHeader(data: string, headerRows: number): Header {
+    const header = data.split("\n").slice(0, headerRows - 1);
     const ibanRow = header.find((v) => {
         if (v.startsWith("IBAN")) return true;
     });
@@ -88,8 +97,11 @@ function parseHeader(data: string): Header {
     };
 }
 
-function parseRawTransactions(data: string): RawTransaction[] {
-    const csv = data.split("\n").slice(CSV_HEADER_ROWS);
+function parseRawTransactions(
+    data: string,
+    headerRows: number,
+): RawTransaction[] {
+    const csv = data.split("\n").slice(headerRows);
     const firstRow = csv.splice(0, 1)[0];
     if (firstRow === undefined) {
         throw new Error("No first row!");
@@ -101,7 +113,7 @@ function parseRawTransactions(data: string): RawTransaction[] {
         const fields = record.split(";");
         if (fields.length !== headerCount) {
             console.error(
-                `Not ${headerCount} fields on line ${i + CSV_HEADER_ROWS + 2}, skipping record!`,
+                `Not ${headerCount} fields on line ${i + headerRows + 2}, skipping record!`,
             );
             console.error(record);
             continue;
@@ -189,8 +201,10 @@ function verifyBalance(transactions: Transaction[]): boolean {
 
 function main() {
     const text = readExport("data/Umsatzanzeige.csv");
-    const header = parseHeader(text);
-    const rawRecords = parseRawTransactions(text);
+    const headerRows = determineHeaderRows(text);
+    console.log(headerRows);
+    const header = parseHeader(text, headerRows);
+    const rawRecords = parseRawTransactions(text, headerRows);
     const records = rawToTransaction(rawRecords);
     console.log(header);
     console.log(records);
