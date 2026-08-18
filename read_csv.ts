@@ -2,13 +2,15 @@ import { readFileSync } from "node:fs";
 
 const CSV_HEADER_ROWS = 13;
 
+type ISODate = string;
+
 type Header = {
     iban: string;
     accountName: string;
     bank: string;
     client: string;
-    periodFrom: Date;
-    periodTo: Date;
+    periodFrom: ISODate;
+    periodTo: ISODate;
 };
 
 type RawTransaction = {
@@ -29,8 +31,8 @@ type Amount = {
 };
 
 type Transaction = {
-    booked: Date;
-    valued: Date;
+    booked: ISODate;
+    valued: ISODate;
     applicantRecipient: string;
     description: string;
     reason: string;
@@ -119,12 +121,21 @@ function parseRawTransactions(data: string): RawTransaction[] {
     return records;
 }
 
-function parseDate(dateString: string): Date {
+function parseDate(dateString: string): ISODate {
     const [day, month, year] = dateString.split(".");
-    if (!day || !month || !year) {
-        throw new Error("Invalid date format: " + dateString);
+    if (
+        !day ||
+        !month ||
+        !year ||
+        day.length !== 2 ||
+        month.length !== 2 ||
+        year.length !== 4
+    ) {
+        throw new Error(
+            `Invalid date format: ${dateString} (Should be DD.MM.YYYY)`,
+        );
     }
-    return new Date(Number(year), Number(month) - 1, Number(day));
+    return `${year}-${month}-${day}`;
 }
 
 function parseAmount(amountString: string, currency: string): Amount {
