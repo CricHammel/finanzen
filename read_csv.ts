@@ -46,9 +46,7 @@ function readExport(path: string): string {
 
 function determineHeaderRows(data: string): number {
     const rows = data.split("\n");
-    const headerRows = rows.findIndex((v) => {
-        if (v.startsWith("Buchung")) return true;
-    });
+    const headerRows = rows.findIndex((v) => v.startsWith("Buchung"));
     if (headerRows === -1) {
         throw new Error("No first row!");
     }
@@ -57,21 +55,11 @@ function determineHeaderRows(data: string): number {
 
 function parseHeader(data: string, headerRows: number): Header {
     const header = data.split("\n").slice(0, headerRows - 1);
-    const ibanRow = header.find((v) => {
-        if (v.startsWith("IBAN")) return true;
-    });
-    const accountNameRow = header.find((v) => {
-        if (v.startsWith("Kontoname")) return true;
-    });
-    const bankRow = header.find((v) => {
-        if (v.startsWith("Bank")) return true;
-    });
-    const clientRow = header.find((v) => {
-        if (v.startsWith("Kunde")) return true;
-    });
-    const periodRow = header.find((v) => {
-        if (v.startsWith("Zeitraum")) return true;
-    });
+    const ibanRow = header.find((v) => v.startsWith("IBAN"));
+    const accountNameRow = header.find((v) => v.startsWith("Kontoname"));
+    const bankRow = header.find((v) => v.startsWith("Bank"));
+    const clientRow = header.find((v) => v.startsWith("Kunde"));
+    const periodRow = header.find((v) => v.startsWith("Zeitraum"));
     if (!ibanRow || !accountNameRow || !bankRow || !clientRow || !periodRow) {
         throw new Error("Header malformed!");
     }
