@@ -116,7 +116,8 @@ function verifyBalance(transactions: Transaction[]): boolean {
             previousTransaction.balance.cents
         ) {
             console.error(
-                "Invalid balance at transaction " + currentTransaction,
+                "Invalid balance at transaction ",
+                currentTransaction,
             );
             return false;
         }
