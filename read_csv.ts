@@ -1,0 +1,135 @@
+import { readFileSync } from "node:fs";
+
+const CSV_HEADER_ROWS = 13;
+
+type RawTransaction = {
+    buchung: string;
+    wertstellungsdatum: string;
+    auftraggeber_empfaenger: string;
+    buchungstext: string;
+    verwendungszweck: string;
+    saldo: string;
+    waehrung_saldo: string;
+    betrag: string;
+    waehrung_betrag: string;
+};
+
+type Amount = {
+    cents: number;
+    currency: string;
+};
+
+type Transaction = {
+    booked: Date;
+    valued: Date;
+    applicantRecipient: string;
+    description: string;
+    reason: string;
+    balance: Amount;
+    amount: Amount;
+};
+
+function readExport(path: string): string {
+    const bytes = readFileSync(path);
+    const text = new TextDecoder("windows-1252").decode(bytes);
+    return text;
+}
+
+function parseCSV(data: string): RawTransaction[] {
+    const csv = data.split("\n").slice(CSV_HEADER_ROWS);
+    const firstRow = csv.splice(0, 1)[0];
+    if (firstRow === undefined) {
+        throw new Error("No first row!");
+    }
+    const headers = firstRow.split(";");
+    const headerCount = headers.length;
+    const records: RawTransaction[] = [];
+    for (const [i, record] of csv.entries()) {
+        const fields = record.split(";");
+        if (fields.length !== headerCount) {
+            console.error(
+                `Not ${headerCount} fields on line ${i + CSV_HEADER_ROWS + 2}, skipping record!`,
+            );
+            console.error(record);
+            continue;
+        }
+        records.push({
+            buchung: fields[0]!,
+            wertstellungsdatum: fields[1]!,
+            auftraggeber_empfaenger: fields[2]!,
+            buchungstext: fields[3]!,
+            verwendungszweck: fields[4]!,
+            saldo: fields[5]!,
+            waehrung_saldo: fields[6]!,
+            betrag: fields[7]!,
+            waehrung_betrag: fields[8]!,
+        });
+    }
+    return records;
+}
+
+function parseDate(dateString: string): Date {
+    const [day, month, year] = dateString.split(".");
+    if (!day || !month || !year) {
+        throw new Error("Invalid date format: " + dateString);
+    }
+    return new Date(Number(year), Number(month) - 1, Number(day));
+}
+
+function parseAmount(amountString: string, currency: string): Amount {
+    const isNegative = amountString.startsWith("-");
+    const [unitString, centsString] = amountString.replace("-", "").split(",");
+    if (!unitString || !centsString || centsString.length !== 2) {
+        throw new Error("Invalid amount: " + amountString);
+    }
+    const unit = Number(unitString.replaceAll(".", ""));
+    let cents = unit * 100 + Number(centsString);
+    return {
+        cents: isNegative ? -cents : cents,
+        currency: currency,
+    };
+}
+
+function rawToTransaction(raws: RawTransaction[]): Transaction[] {
+    const transactions: Transaction[] = [];
+    for (const raw of raws) {
+        transactions.push({
+            booked: parseDate(raw.buchung),
+            valued: parseDate(raw.wertstellungsdatum),
+            applicantRecipient: raw.auftraggeber_empfaenger,
+            description: raw.buchungstext,
+            reason: raw.verwendungszweck,
+            balance: parseAmount(raw.saldo, raw.waehrung_saldo),
+            amount: parseAmount(raw.betrag, raw.waehrung_betrag),
+        });
+    }
+    return transactions;
+}
+
+function verifyBalance(transactions: Transaction[]): boolean {
+    for (let i = 0; i < transactions.length - 1; i++) {
+        const currentTransaction = transactions[i]!;
+        const previousTransaction = transactions[i + 1]!;
+        if (
+            currentTransaction.balance.cents -
+                currentTransaction.amount.cents !==
+            previousTransaction.balance.cents
+        ) {
+            console.error(
+                "Invalid balance at transaction " + currentTransaction,
+            );
+            return false;
+        }
+    }
+    return true;
+}
+
+function main() {
+    const text = readExport("data/Umsatzanzeige.csv");
+    const rawRecords = parseCSV(text);
+    const records = rawToTransaction(rawRecords);
+    console.log(records);
+    console.log(verifyBalance(records));
+}
+
+main();
