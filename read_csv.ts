@@ -2,6 +2,15 @@ import { readFileSync } from "node:fs";
 
 const CSV_HEADER_ROWS = 13;
 
+type Header = {
+    iban: string;
+    accountName: string;
+    bank: string;
+    client: string;
+    periodFrom: Date;
+    periodTo: Date;
+};
+
 type RawTransaction = {
     buchung: string;
     wertstellungsdatum: string;
@@ -35,7 +44,49 @@ function readExport(path: string): string {
     return text;
 }
 
-function parseCSV(data: string): RawTransaction[] {
+function parseHeader(data: string): Header {
+    const header = data.split("\n").slice(0, CSV_HEADER_ROWS - 1);
+    const ibanRow = header.find((v) => {
+        if (v.startsWith("IBAN")) return true;
+    });
+    const accountNameRow = header.find((v) => {
+        if (v.startsWith("Kontoname")) return true;
+    });
+    const bankRow = header.find((v) => {
+        if (v.startsWith("Bank")) return true;
+    });
+    const clientRow = header.find((v) => {
+        if (v.startsWith("Kunde")) return true;
+    });
+    const periodRow = header.find((v) => {
+        if (v.startsWith("Zeitraum")) return true;
+    });
+    if (!ibanRow || !accountNameRow || !bankRow || !clientRow || !periodRow) {
+        throw new Error("Header malformed!");
+    }
+    const iban = ibanRow.split(";")[1];
+    const accountName = accountNameRow.split(";")[1];
+    const bank = bankRow.split(";")[1];
+    const client = clientRow.split(";")[1];
+    const period = periodRow.split(";")[1];
+    if (!iban || !accountName || !bank || !client || !period) {
+        throw new Error("Header malformed!");
+    }
+    const [periodFrom, periodTo] = period.split(" - ");
+    if (!periodFrom || !periodTo) {
+        throw new Error("Header malformed!");
+    }
+    return {
+        iban: iban,
+        accountName: accountName,
+        bank: bank,
+        client: client,
+        periodFrom: parseDate(periodFrom),
+        periodTo: parseDate(periodTo),
+    };
+}
+
+function parseRawTransactions(data: string): RawTransaction[] {
     const csv = data.split("\n").slice(CSV_HEADER_ROWS);
     const firstRow = csv.splice(0, 1)[0];
     if (firstRow === undefined) {
@@ -127,8 +178,10 @@ function verifyBalance(transactions: Transaction[]): boolean {
 
 function main() {
     const text = readExport("data/Umsatzanzeige.csv");
-    const rawRecords = parseCSV(text);
+    const header = parseHeader(text);
+    const rawRecords = parseRawTransactions(text);
     const records = rawToTransaction(rawRecords);
+    console.log(header);
     console.log(records);
     console.log(verifyBalance(records));
 }
