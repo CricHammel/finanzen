@@ -3,7 +3,7 @@ CREATE TABLE accounts (
   iban TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   bank TEXT NOT NULL,
-  type TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type = 'Girokonto'),
   currency TEXT NOT NULL
 ) STRICT;
 
@@ -49,8 +49,9 @@ CREATE TABLE transactions (
   categoryId INTEGER REFERENCES categories(id),
   categorySource TEXT CHECK (categorySource IN ('rule', 'manual')),
   appliedRuleId INTEGER REFERENCES rules(id),
-  isInternal INTEGER NOT NULL CHECK (isInternal IN (0, 1))
-  CHECK (categoryId IS NULL OR categorySource = 'rule')
+  isInternal INTEGER NOT NULL CHECK (isInternal IN (0, 1)),
+  CHECK ((categoryId IS NULL) = (categorySource IS NULL)),
+  CHECK (appliedRuleId IS NULL OR categorySource IS 'rule')
 ) STRICT;
 
 CREATE UNIQUE INDEX idx_transactions_account_dedupHash ON transactions(accountId, dedupHash);
