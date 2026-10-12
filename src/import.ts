@@ -3,8 +3,9 @@ import type { Header, Transaction } from "./types.ts";
 
 function verifyBalance(header: Header, transactions: Transaction[]) {
     if (
-        header.balance.cents != transactions[0]!.balance.cents ||
-        header.balance.currency != transactions[0]!.balance.currency
+        !transactions[0] ||
+        header.balance.cents !== transactions[0].balance.cents ||
+        header.balance.currency !== transactions[0].balance.currency
     ) {
         throw new Error(
             "Balance of account and last transaction do not match!",
@@ -19,13 +20,16 @@ function verifyBalance(header: Header, transactions: Transaction[]) {
             previousTransaction.balance.cents
         ) {
             throw new Error(
-                "Invalid balance at transaction " + currentTransaction,
+                "Invalid balance at transaction with date " +
+                    currentTransaction.booked +
+                    " and amount " +
+                    currentTransaction.amount,
             );
         }
     }
 }
 
 export function importTransactions(path: string) {
-    const [header, records] = parseCsv(path);
-    verifyBalance(header, records);
+    const { header, transactions } = parseCsv(path);
+    verifyBalance(header, transactions);
 }

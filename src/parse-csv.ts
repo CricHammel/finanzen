@@ -134,7 +134,7 @@ function parseAmount(amountString: string, currency: string): Amount {
         throw new Error("Invalid amount: " + amountString);
     }
     const unit = Number(unitString.replaceAll(".", ""));
-    let cents = unit * 100 + Number(centsString);
+    const cents = unit * 100 + Number(centsString);
     return {
         cents: isNegative ? -cents : cents,
         currency: currency,
@@ -157,10 +157,13 @@ function rawToTransaction(raws: RawTransaction[]): Transaction[] {
     return transactions;
 }
 
-export function parseCsv(path: string): [Header, Transaction[]] {
+export function parseCsv(path: string): {
+    header: Header;
+    transactions: Transaction[];
+} {
     const text = readExport(path);
     const headerRows = determineHeaderRows(text);
     const header = parseHeader(text, headerRows);
     const rawRecords = parseRawTransactions(text, headerRows);
-    return [header, rawToTransaction(rawRecords)];
+    return { header: header, transactions: rawToTransaction(rawRecords) };
 }
