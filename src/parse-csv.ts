@@ -29,7 +29,15 @@ function parseHeader(data: string, headerRows: number): Header {
     const bankRow = header.find((v) => v.startsWith("Bank"));
     const clientRow = header.find((v) => v.startsWith("Kunde"));
     const periodRow = header.find((v) => v.startsWith("Zeitraum"));
-    if (!ibanRow || !accountNameRow || !bankRow || !clientRow || !periodRow) {
+    const balanceRow = header.find((v) => v.startsWith("Saldo"));
+    if (
+        !ibanRow ||
+        !accountNameRow ||
+        !bankRow ||
+        !clientRow ||
+        !periodRow ||
+        !balanceRow
+    ) {
         throw new Error("Header malformed!");
     }
     const iban = ibanRow.split(";")[1];
@@ -37,13 +45,24 @@ function parseHeader(data: string, headerRows: number): Header {
     const bank = bankRow.split(";")[1];
     const client = clientRow.split(";")[1];
     const period = periodRow.split(";")[1];
-    if (!iban || !accountName || !bank || !client || !period) {
+    const balanceCents = balanceRow.split(";")[1];
+    const balanceCurrency = balanceRow.split(";")[2];
+    if (
+        !iban ||
+        !accountName ||
+        !bank ||
+        !client ||
+        !period ||
+        !balanceCents ||
+        !balanceCurrency
+    ) {
         throw new Error("Header malformed!");
     }
     const [periodFrom, periodTo] = period.split(" - ");
     if (!periodFrom || !periodTo) {
         throw new Error("Header malformed!");
     }
+    const balance = parseAmount(balanceCents, balanceCurrency);
     return {
         iban: iban,
         accountName: accountName,
@@ -51,6 +70,7 @@ function parseHeader(data: string, headerRows: number): Header {
         client: client,
         periodFrom: parseDate(periodFrom),
         periodTo: parseDate(periodTo),
+        balance: balance,
     };
 }
 

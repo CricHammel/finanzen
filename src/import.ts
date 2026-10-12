@@ -1,7 +1,15 @@
 import { parseCsv } from "./parse-csv.ts";
-import type { Transaction } from "./types.ts";
+import type { Header, Transaction } from "./types.ts";
 
-function verifyBalance(transactions: Transaction[]) {
+function verifyBalance(header: Header, transactions: Transaction[]) {
+    if (
+        header.balance.cents != transactions[0]!.balance.cents ||
+        header.balance.currency != transactions[0]!.balance.currency
+    ) {
+        throw new Error(
+            "Balance of account and last transaction do not match!",
+        );
+    }
     for (let i = 0; i < transactions.length - 1; i++) {
         const currentTransaction = transactions[i]!;
         const previousTransaction = transactions[i + 1]!;
@@ -19,7 +27,5 @@ function verifyBalance(transactions: Transaction[]) {
 
 export function importTransactions(path: string) {
     const [header, records] = parseCsv(path);
-    console.log(header);
-    console.log(records);
-    verifyBalance(records);
+    verifyBalance(header, records);
 }

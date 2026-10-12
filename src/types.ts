@@ -7,6 +7,7 @@ export type Header = {
     client: string;
     periodFrom: ISODate;
     periodTo: ISODate;
+    balance: Amount;
 };
 
 export type RawTransaction = {
