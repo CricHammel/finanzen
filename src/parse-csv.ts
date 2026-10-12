@@ -1,42 +1,11 @@
 import { readFileSync } from "node:fs";
-
-type ISODate = string;
-
-type Header = {
-    iban: string;
-    accountName: string;
-    bank: string;
-    client: string;
-    periodFrom: ISODate;
-    periodTo: ISODate;
-};
-
-type RawTransaction = {
-    buchung: string;
-    wertstellungsdatum: string;
-    auftraggeber_empfaenger: string;
-    buchungstext: string;
-    verwendungszweck: string;
-    saldo: string;
-    waehrung_saldo: string;
-    betrag: string;
-    waehrung_betrag: string;
-};
-
-type Amount = {
-    cents: number;
-    currency: string;
-};
-
-type Transaction = {
-    booked: ISODate;
-    valued: ISODate;
-    applicantRecipient: string;
-    description: string;
-    reason: string;
-    balance: Amount;
-    amount: Amount;
-};
+import type {
+    ISODate,
+    Header,
+    RawTransaction,
+    Amount,
+    Transaction,
+} from "./types.ts";
 
 function readExport(path: string): string {
     const bytes = readFileSync(path);
@@ -168,35 +137,10 @@ function rawToTransaction(raws: RawTransaction[]): Transaction[] {
     return transactions;
 }
 
-function verifyBalance(transactions: Transaction[]): boolean {
-    for (let i = 0; i < transactions.length - 1; i++) {
-        const currentTransaction = transactions[i]!;
-        const previousTransaction = transactions[i + 1]!;
-        if (
-            currentTransaction.balance.cents -
-                currentTransaction.amount.cents !==
-            previousTransaction.balance.cents
-        ) {
-            console.error(
-                "Invalid balance at transaction ",
-                currentTransaction,
-            );
-            return false;
-        }
-    }
-    return true;
-}
-
-function main() {
-    const text = readExport("data/Umsatzanzeige.csv");
+export function parseCsv(path: string): [Header, Transaction[]] {
+    const text = readExport(path);
     const headerRows = determineHeaderRows(text);
-    console.log(headerRows);
     const header = parseHeader(text, headerRows);
     const rawRecords = parseRawTransactions(text, headerRows);
-    const records = rawToTransaction(rawRecords);
-    console.log(header);
-    console.log(records);
-    console.log(verifyBalance(records));
+    return [header, rawToTransaction(rawRecords)];
 }
-
-main();
