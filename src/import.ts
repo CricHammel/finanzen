@@ -1,5 +1,6 @@
 import { parseCsv } from "./parse-csv.ts";
 import type { Header, Transaction } from "./types.ts";
+import { db } from "./db.ts";
 
 function verifyBalance(header: Header, transactions: Transaction[]) {
     if (
@@ -32,4 +33,5 @@ function verifyBalance(header: Header, transactions: Transaction[]) {
 export function importTransactions(path: string) {
     const { header, transactions } = parseCsv(path);
     verifyBalance(header, transactions);
+    console.log(db);
 }
