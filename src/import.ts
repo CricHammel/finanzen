@@ -30,8 +30,34 @@ function verifyBalance(header: Header, transactions: Transaction[]) {
     }
 }
 
+function findOrCreateAccount(header: Header): number {
+    const account = db
+        .prepare("SELECT id FROM accounts WHERE iban = ?")
+        .get(header.iban);
+    if (!account) {
+        return Number(
+            db
+                .prepare(
+                    "INSERT INTO accounts (iban, name, bank, type, currency) VALUES (?, ?, ?, ?, ?)",
+                )
+                .run(
+                    header.iban,
+                    header.accountName,
+                    header.bank,
+                    "Girokonto", // Right now "Girokonto" is the only account type
+                    header.balance.currency,
+                ).lastInsertRowid,
+        );
+    }
+    if (typeof account.id !== "number") {
+        throw new Error("Unexspected row id: " + account.id);
+    }
+    return account.id;
+}
+
 export function importTransactions(path: string) {
     const { header, transactions } = parseCsv(path);
     verifyBalance(header, transactions);
-    console.log(db);
+    const accountId = findOrCreateAccount(header);
+    console.log(accountId);
 }
