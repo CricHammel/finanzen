@@ -88,13 +88,14 @@ function parseRawTransactions(
     const headerCount = headers.length;
     const records: RawTransaction[] = [];
     for (const [i, record] of csv.entries()) {
+        if (record.trim() === "") {
+            continue;
+        }
         const fields = record.split(";");
         if (fields.length !== headerCount) {
-            console.error(
-                `Not ${headerCount} fields on line ${i + headerRows + 2}, skipping record!`,
+            throw new Error(
+                `Not ${headerCount} fields on line ${i + headerRows + 2}!`,
             );
-            console.error(record);
-            continue;
         }
         records.push({
             buchung: fields[0]!,
