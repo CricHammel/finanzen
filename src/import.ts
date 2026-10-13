@@ -24,7 +24,7 @@ function verifyBalance(header: Header, transactions: Transaction[]) {
                 "Invalid balance at transaction with date " +
                     currentTransaction.booked +
                     " and amount " +
-                    currentTransaction.amount,
+                    currentTransaction.amount.cents,
             );
         }
     }
@@ -58,6 +58,52 @@ function findOrCreateAccount(header: Header): number {
 export function importTransactions(path: string) {
     const { header, transactions } = parseCsv(path);
     verifyBalance(header, transactions);
-    const accountId = findOrCreateAccount(header);
-    console.log(accountId);
+    db.exec("BEGIN");
+    try {
+        const accountId = findOrCreateAccount(header);
+        const splitPath = path.split("/");
+        const fileName = splitPath[splitPath.length - 1]!;
+        const importId = db
+            .prepare(
+                "INSERT INTO imports (accountId, fileName, importedAt, periodFrom, periodTo, linesTotal, linesImported) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            )
+            .run(
+                accountId,
+                fileName,
+                new Date().toISOString(),
+                header.periodFrom,
+                header.periodTo,
+                transactions.length,
+                0, // Placeholder, gets updated once import is done
+            ).lastInsertRowid;
+        const stmt = db.prepare(
+            "INSERT INTO transactions (accountId, importId, bookedOn, valuedOn, counterparty, bookingText, purpose, amountCents, balanceCents, dedupHash, rawLine, isInternal) VALUES (:accountId, :importId, :bookedOn, :valuedOn, :counterparty, :bookingText, :purpose, :amountCents, :balanceCents, :dedupHash, :rawLine, :isInternal) ON CONFLICT DO NOTHING",
+        );
+        let changes = 0;
+        for (const t of transactions) {
+            const result = stmt.run({
+                accountId: accountId,
+                importId: importId,
+                bookedOn: t.booked,
+                valuedOn: t.valued,
+                counterparty: t.applicantRecipient,
+                bookingText: t.description,
+                purpose: t.reason,
+                amountCents: t.amount.cents,
+                balanceCents: t.balance.cents,
+                dedupHash: t.dedupHash,
+                rawLine: t.rawLine,
+                isInternal: 0,
+            });
+            changes += Number(result.changes);
+        }
+        db.prepare("UPDATE imports SET linesImported = ? WHERE id = ?").run(
+            changes,
+            importId,
+        );
+        db.exec("COMMIT");
+    } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
+    }
 }
