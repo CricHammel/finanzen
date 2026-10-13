@@ -20,6 +20,7 @@ export type RawTransaction = {
     waehrung_saldo: string;
     betrag: string;
     waehrung_betrag: string;
+    raw_line: string;
 };
 
 export type Amount = {
@@ -35,4 +36,6 @@ export type Transaction = {
     reason: string;
     balance: Amount;
     amount: Amount;
+    dedupHash: string;
+    rawLine: string;
 };

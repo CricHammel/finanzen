@@ -6,6 +6,7 @@ import type {
     Amount,
     Transaction,
 } from "./types.ts";
+import { createHash } from "node:crypto";
 
 function readExport(path: string): string {
     const bytes = readFileSync(path);
@@ -105,6 +106,7 @@ function parseRawTransactions(
             waehrung_saldo: fields[6]!,
             betrag: fields[7]!,
             waehrung_betrag: fields[8]!,
+            raw_line: record,
         });
     }
     return records;
@@ -141,9 +143,16 @@ function parseAmount(amountString: string, currency: string): Amount {
     };
 }
 
+function buildDedupHash(raw: RawTransaction): string {
+    return createHash("sha256").update(raw.raw_line).digest("hex");
+}
+
 function rawToTransaction(raws: RawTransaction[]): Transaction[] {
     const transactions: Transaction[] = [];
+    const dedupHashes = new Set();
     for (const raw of raws) {
+        const dedupHash = buildDedupHash(raw);
+        dedupHashes.add(dedupHash);
         transactions.push({
             booked: parseDate(raw.buchung),
             valued: parseDate(raw.wertstellungsdatum),
@@ -152,7 +161,14 @@ function rawToTransaction(raws: RawTransaction[]): Transaction[] {
             reason: raw.verwendungszweck,
             balance: parseAmount(raw.saldo, raw.waehrung_saldo),
             amount: parseAmount(raw.betrag, raw.waehrung_betrag),
+            dedupHash: dedupHash,
+            rawLine: raw.raw_line,
         });
+    }
+    if (dedupHashes.size !== raws.length) {
+        throw new Error(
+            `Hash error! ${raws.length} transactions, but only ${dedupHashes.size} unique hashes`,
+        );
     }
     return transactions;
 }
