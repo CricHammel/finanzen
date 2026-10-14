@@ -14,8 +14,7 @@ function readExport(path: string): string {
     return text;
 }
 
-function determineHeaderRows(data: string): number {
-    const rows = data.split("\n");
+function determineHeaderRowCount(rows: string[]): number {
     const headerRows = rows.findIndex((v) => v.startsWith("Buchung"));
     if (headerRows === -1) {
         throw new Error("No first row!");
@@ -23,8 +22,8 @@ function determineHeaderRows(data: string): number {
     return headerRows;
 }
 
-function parseHeader(data: string, headerRows: number): Header {
-    const header = data.split("\n").slice(0, headerRows);
+function parseHeader(rows: string[], headerRowCount: number): Header {
+    const header = rows.slice(0, headerRowCount);
     const ibanRow = header.find((v) => v.startsWith("IBAN"));
     const accountNameRow = header.find((v) => v.startsWith("Kontoname"));
     const bankRow = header.find((v) => v.startsWith("Bank"));
@@ -76,16 +75,15 @@ function parseHeader(data: string, headerRows: number): Header {
 }
 
 function parseRawTransactions(
-    data: string,
+    rows: string[],
     headerRows: number,
 ): RawTransaction[] {
-    const csv = data.split("\n").slice(headerRows);
+    const csv = rows.slice(headerRows);
     const firstRow = csv.splice(0, 1)[0];
     if (firstRow === undefined) {
         throw new Error("No first row!");
     }
-    const headers = firstRow.split(";");
-    const headerCount = headers.length;
+    const headerCount = firstRow.split(";").length;
     const records: RawTransaction[] = [];
     for (const [i, record] of csv.entries()) {
         if (record.trim() === "") {
@@ -121,7 +119,10 @@ function parseDate(dateString: string): ISODate {
         !year ||
         day.length !== 2 ||
         month.length !== 2 ||
-        year.length !== 4
+        year.length !== 4 ||
+        isNaN(Number(day)) ||
+        isNaN(Number(month)) ||
+        isNaN(Number(year))
     ) {
         throw new Error(
             `Invalid date format: ${dateString} (Should be DD.MM.YYYY)`,
@@ -179,8 +180,9 @@ export function parseCsv(path: string): {
     transactions: Transaction[];
 } {
     const text = readExport(path);
-    const headerRows = determineHeaderRows(text);
-    const header = parseHeader(text, headerRows);
-    const rawRecords = parseRawTransactions(text, headerRows);
+    const rows = text.split("\n").map((row) => row.trimEnd());
+    const headerRowCount = determineHeaderRowCount(rows);
+    const header = parseHeader(rows, headerRowCount);
+    const rawRecords = parseRawTransactions(rows, headerRowCount);
     return { header: header, transactions: rawToTransaction(rawRecords) };
 }

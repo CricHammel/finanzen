@@ -1,5 +1,5 @@
 import path from "node:path";
-import * as fs from "fs";
+import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 
 const dbPath = path.join(import.meta.dirname, "../db.sqlite3");
@@ -15,7 +15,7 @@ function ensureSchema(db: DatabaseSync) {
     if (userVersion !== 0) {
         return;
     }
-    const schema = fs.readFileSync(schemaPath, "utf8").toString();
+    const schema = readFileSync(schemaPath, "utf8");
     db.exec(schema);
     db.exec("PRAGMA user_version = 1");
 }

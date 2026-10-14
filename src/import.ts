@@ -1,6 +1,7 @@
 import { parseCsv } from "./parse-csv.ts";
 import type { Header, Transaction } from "./types.ts";
 import { db } from "./db.ts";
+import { basename } from "node:path";
 
 function verifyBalance(header: Header, transactions: Transaction[]) {
     if (
@@ -61,8 +62,7 @@ export function importTransactions(path: string) {
     db.exec("BEGIN");
     try {
         const accountId = findOrCreateAccount(header);
-        const splitPath = path.split("/");
-        const fileName = splitPath[splitPath.length - 1]!;
+        const fileName = basename(path);
         const importId = db
             .prepare(
                 "INSERT INTO imports (accountId, fileName, importedAt, periodFrom, periodTo, linesTotal, linesImported) VALUES (?, ?, ?, ?, ?, ?, ?)",
