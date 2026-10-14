@@ -112,6 +112,36 @@ export function importTransactions(path: string) {
             changes,
             importId,
         );
+        // Check whole account for gaps between transactions
+        const gap = db
+            .prepare(
+                `WITH chain AS (
+                        SELECT
+                            accountId,
+                            bookedOn,
+                            balanceCents - amountCents AS balance_before,
+                            LAG(balanceCents) OVER chain_window AS previous_balance,
+                            LAG(bookedOn) OVER chain_window AS previous_bookedOn
+                        FROM transactions
+                        WHERE accountId = ?
+                        WINDOW chain_window AS (PARTITION BY accountId ORDER BY bookedOn, dayPosition)
+                    )
+                    SELECT accountId,
+                        previous_bookedOn,
+                        bookedOn,
+                        balance_before - previous_balance AS missing_balance
+                    FROM chain
+                    WHERE previous_bookedOn IS NOT NULL
+                        AND balance_before != previous_balance
+                    ORDER BY accountId, bookedOn
+                    LIMIT 1;`,
+            )
+            .get(accountId);
+        if (gap) {
+            throw new Error(
+                `Found gap between ${gap["previous_bookedOn"]} and ${gap["bookedOn"]}: ${gap["missing_balance"]} cents are missing!`,
+            );
+        }
         db.exec("COMMIT");
     } catch (error) {
         db.exec("ROLLBACK");
