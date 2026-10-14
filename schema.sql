@@ -38,6 +38,7 @@ CREATE TABLE transactions (
   accountId INTEGER REFERENCES accounts(id) NOT NULL,
   importId INTEGER REFERENCES imports(id) NOT NULL,
   bookedOn TEXT NOT NULL,
+  dayPosition INTEGER NOT NULL,
   valuedOn TEXT NOT NULL,
   counterparty TEXT NOT NULL,
   bookingText TEXT NOT NULL,
@@ -55,6 +56,7 @@ CREATE TABLE transactions (
 ) STRICT;
 
 CREATE UNIQUE INDEX idx_transactions_account_dedupHash ON transactions(accountId, dedupHash);
+CREATE UNIQUE INDEX idx_transactions_account_bookedOn_dayPosition ON transactions(accountId, bookedOn, dayPosition);
 
 CREATE TABLE transfers (
   id INTEGER PRIMARY KEY,

@@ -77,14 +77,23 @@ export function importTransactions(path: string) {
                 0, // Placeholder, gets updated once import is done
             ).lastInsertRowid;
         const stmt = db.prepare(
-            "INSERT INTO transactions (accountId, importId, bookedOn, valuedOn, counterparty, bookingText, purpose, amountCents, balanceCents, dedupHash, rawLine, isInternal) VALUES (:accountId, :importId, :bookedOn, :valuedOn, :counterparty, :bookingText, :purpose, :amountCents, :balanceCents, :dedupHash, :rawLine, :isInternal) ON CONFLICT DO NOTHING",
+            "INSERT INTO transactions (accountId, importId, bookedOn, dayPosition, valuedOn, counterparty, bookingText, purpose, amountCents, balanceCents, dedupHash, rawLine, isInternal) VALUES (:accountId, :importId, :bookedOn, :dayPosition, :valuedOn, :counterparty, :bookingText, :purpose, :amountCents, :balanceCents, :dedupHash, :rawLine, :isInternal) ON CONFLICT (accountId, dedupHash) DO NOTHING",
         );
         let changes = 0;
-        for (const t of transactions) {
+        let previousTransactionDate: string | undefined;
+        let dayCounter = 0;
+        for (const t of transactions.toReversed()) {
+            if (
+                previousTransactionDate &&
+                previousTransactionDate !== t.booked
+            ) {
+                dayCounter = 0;
+            }
             const result = stmt.run({
                 accountId: accountId,
                 importId: importId,
                 bookedOn: t.booked,
+                dayPosition: dayCounter,
                 valuedOn: t.valued,
                 counterparty: t.applicantRecipient,
                 bookingText: t.description,
@@ -96,6 +105,8 @@ export function importTransactions(path: string) {
                 isInternal: 0,
             });
             changes += Number(result.changes);
+            dayCounter++;
+            previousTransactionDate = t.booked;
         }
         db.prepare("UPDATE imports SET linesImported = ? WHERE id = ?").run(
             changes,
