@@ -1,5 +1,7 @@
 export type ISODate = string;
 
+export type ISOMonth = string;
+
 export type Header = {
     iban: string;
     accountName: string;
@@ -38,4 +40,11 @@ export type Transaction = {
     amount: Amount;
     dedupHash: string;
     rawLine: string;
+};
+
+export type MonthlySummary = {
+    month: ISOMonth;
+    income: Amount;
+    expenses: Amount;
+    total: Amount;
 };
