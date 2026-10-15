@@ -1,5 +1,33 @@
 import { db } from "./db.ts";
-import type { Amount, MonthlySummary } from "./types.ts";
+import type { Account, Amount, MonthlySummary } from "./types.ts";
+
+export function getAccounts(): Account[] {
+    const rows = db.prepare("SELECT * FROM accounts").all();
+    const accounts: Account[] = [];
+    for (const row of rows) {
+        if (
+            typeof row.id !== "number" ||
+            typeof row.name !== "string" ||
+            typeof row.iban !== "string" ||
+            typeof row.bank !== "string" ||
+            typeof row.type !== "string" ||
+            typeof row.currency !== "string"
+        ) {
+            throw new Error(
+                `Wrong database format for row: id: ${row.id}, name: ${row.name}, iban: ${row.iban}, bank: ${row.bank}, type: ${row.type}, currency: ${row.currency}`,
+            );
+        }
+        accounts.push({
+            id: row.id,
+            name: row.name,
+            iban: row.iban,
+            bank: row.bank,
+            type: row.type,
+            currency: row.currency,
+        });
+    }
+    return accounts;
+}
 
 export function getCurrentBalance(accountId: number): Amount {
     const row = db

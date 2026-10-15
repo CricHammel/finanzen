@@ -42,6 +42,15 @@ export type Transaction = {
     rawLine: string;
 };
 
+export type Account = {
+    id: number;
+    iban: string;
+    name: string;
+    bank: string;
+    type: string;
+    currency: string;
+};
+
 export type MonthlySummary = {
     month: ISOMonth;
     income: Amount;
