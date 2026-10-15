@@ -1,7 +1,9 @@
 import { importTransactions } from "./import.ts";
+import { getCurrentBalance } from "./query.ts";
 
 function main() {
-    importTransactions("data/Umsatzanzeige.csv");
+    const accountId = importTransactions("data/Umsatzanzeige.csv");
+    console.log(getCurrentBalance(accountId));
 }
 
 main();

@@ -56,7 +56,7 @@ function findOrCreateAccount(header: Header): number {
     return account.id;
 }
 
-export function importTransactions(path: string) {
+export function importTransactions(path: string): number {
     const { header, transactions } = parseCsv(path);
     verifyBalance(header, transactions);
     db.exec("BEGIN");
@@ -143,6 +143,7 @@ export function importTransactions(path: string) {
             );
         }
         db.exec("COMMIT");
+        return accountId;
     } catch (error) {
         db.exec("ROLLBACK");
         throw error;
