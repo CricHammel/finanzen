@@ -112,6 +112,9 @@ export function importTransactions(path: string): number {
             changes,
             importId,
         );
+        if (changes === 0) {
+            return accountId;
+        }
         // Check whole account for gaps between transactions
         const gap = db
             .prepare(
