@@ -1,3 +1,4 @@
+import { createCategory, getCategories } from "./categories.ts";
 import { formatAmount, formatMonthlySummaries } from "./format.ts";
 import { importTransactions } from "./import.ts";
 import { getAccounts, getCurrentBalance, getMonthlyOverview } from "./query.ts";
@@ -9,13 +10,19 @@ function main() {
             "============================ Finanzen ============================",
         );
         console.log("A small tool to keep track of your finances.\n");
-        console.log("   import <path>          Import a csv with transactions");
-        console.log("   accounts               List accounts");
         console.log(
-            "   balance <accountId>    Get the current balance of an account",
+            "   import <path>                       Import a csv with transactions",
+        );
+        console.log("   accounts                            List accounts");
+        console.log(
+            "   balance <accountId>                 Get the current balance of an account",
         );
         console.log(
-            "   months <accountId>     Get a monthly summary of an account",
+            "   months <accountId>                  Get a monthly summary of an account",
+        );
+        console.log("   categories                          List categories");
+        console.log(
+            "   categories create <name> [parentId] Create a new category, optionally with a parent",
         );
         return;
     }
@@ -57,8 +64,48 @@ function main() {
             );
             break;
         }
+        case "categories": {
+            if (args.length === 1) {
+                getCategories().forEach((c) => {
+                    console.log(
+                        `${c.id} ${c.name} ${c.parentId ? `(parent: ${c.parentId})` : "(no parent)"}`,
+                    );
+                });
+            } else if (args[1] === "create") {
+                if (args.length === 2 || args.length > 4) {
+                    throw new Error(
+                        "Wrong usage! Please specify name and optionally parent id",
+                    );
+                }
+                const name = String(args[2]);
+                let parentId: number | null = null;
+                if (args.length === 4) {
+                    parentId = Number(args[3]);
+                    if (!Number.isInteger(parentId)) {
+                        throw new Error(
+                            "Wrong usage! Please specify name and optionally parent id",
+                        );
+                    }
+                }
+                const c = createCategory({
+                    name: name,
+                    parentId: parentId,
+                });
+                console.log(
+                    `New category created: ${c.id} ${c.name} ${c.parentId ? `(parent: ${c.parentId})` : "(no parent)"}`,
+                );
+            } else {
+                throw new Error(
+                    "Wrong usage! category create <name> [parentId]",
+                );
+            }
+
+            break;
+        }
         default: {
-            throw new Error("Wrong usage! import|accounts|balance|months");
+            throw new Error(
+                "Wrong usage! import|accounts|balance|months|categories",
+            );
         }
     }
 }

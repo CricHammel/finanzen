@@ -57,3 +57,11 @@ export type MonthlySummary = {
     expenses: Amount;
     total: Amount;
 };
+
+export type Category = {
+    id: number;
+    name: string;
+    parentId: number | null;
+};
+
+export type NewCategory = Omit<Category, "id">;
