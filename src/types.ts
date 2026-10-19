@@ -1,3 +1,5 @@
+import type { ParseArgsConfig } from "node:util";
+
 export type ISODate = string;
 
 export type ISOMonth = string;
@@ -81,3 +83,20 @@ export type Category = {
 };
 
 export type NewCategory = Omit<Category, "id">;
+
+export type CommandOptions = NonNullable<ParseArgsConfig["options"]>;
+
+export type CommandLeaf = {
+    name: string;
+    description: string;
+    positionals: string[];
+    options: CommandOptions;
+    run: (positionals: string[], values: Record<string, unknown>) => void;
+};
+
+export type CommandGroup = {
+    name: string;
+    subcommands: CommandLeaf[];
+};
+
+export type Command = CommandLeaf | CommandGroup;
