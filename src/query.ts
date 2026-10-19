@@ -29,48 +29,7 @@ export function getAccounts(): Account[] {
     return accounts;
 }
 
-export function getCurrentBalance(accountId: number): Amount {
-    const row = db
-        .prepare(
-            `SELECT
-                currency,
-                (
-                    SELECT
-                        balanceCents
-                    FROM transactions
-                    WHERE transactions.accountId = accounts.id
-                    ORDER BY bookedOn DESC, dayPosition DESC
-                    LIMIT 1
-                ) AS balanceCents
-            FROM accounts
-            WHERE id = ?`,
-        )
-        .get(accountId);
-    if (!row) {
-        throw new Error(`Account with id ${accountId} not found.`);
-    }
-    if (row.balanceCents === null) {
-        throw new Error(`Account with id ${accountId} is empty.`);
-    }
-    if (
-        typeof row.balanceCents !== "number" ||
-        typeof row.currency !== "string"
-    ) {
-        throw new Error(
-            `Wrong database format for row: balanceCents: ${row.balanceCents}, currency: ${row.currency}`,
-        );
-    }
-    return {
-        cents: row.balanceCents,
-        currency: row.currency,
-    };
-}
-
-export function getTransactions(
-    accountId: number,
-    limit: number | undefined,
-    sort: "ASC" | "DESC" | undefined,
-): Transaction[] {
+export function getAccountCurrency(accountId: number): string {
     const currencyRow = db
         .prepare("SELECT currency FROM accounts WHERE id = ?")
         .get(accountId);
@@ -81,6 +40,37 @@ export function getTransactions(
     if (typeof currency !== "string") {
         throw new Error(`Wrong database format for row: currency: ${currency}`);
     }
+    return currency;
+}
+
+export function getCurrentBalance(accountId: number): Amount {
+    const row = db
+        .prepare(
+            `SELECT balanceCents FROM transactions WHERE accountId = ? ORDER BY bookedOn DESC, dayPosition DESC LIMIT 1`,
+        )
+        .get(accountId);
+    if (!row) {
+        throw new Error(`Account with id ${accountId} not found.`);
+    }
+    if (row.balanceCents === null) {
+        throw new Error(`Account with id ${accountId} is empty.`);
+    }
+    if (typeof row.balanceCents !== "number") {
+        throw new Error(
+            `Wrong database format for row: balanceCents: ${row.balanceCents}`,
+        );
+    }
+    return {
+        cents: row.balanceCents,
+        currency: getAccountCurrency(accountId),
+    };
+}
+
+export function getTransactions(
+    accountId: number,
+    limit: number | undefined,
+    sort: "ASC" | "DESC" | undefined,
+): Transaction[] {
     let statement = "SELECT * FROM transactions WHERE accountId = ?";
     if (sort !== undefined) {
         statement += ` ORDER BY bookedOn ${sort}, dayPosition ${sort}`;
@@ -94,6 +84,7 @@ export function getTransactions(
         rows = db.prepare(statement).all(accountId);
     }
     const transactions: Transaction[] = [];
+    const currency = getAccountCurrency(accountId);
     for (const row of rows) {
         if (
             typeof row.id !== "number" ||
@@ -145,16 +136,6 @@ export function getTransactions(
 }
 
 export function getMonthlyOverview(accountId: number): MonthlySummary[] {
-    const currencyRow = db
-        .prepare("SELECT currency FROM accounts WHERE id = ?")
-        .get(accountId);
-    if (!currencyRow) {
-        throw new Error(`Account with id ${accountId} not found.`);
-    }
-    const currency = currencyRow.currency;
-    if (typeof currency !== "string") {
-        throw new Error(`Wrong database format for row: currency: ${currency}`);
-    }
     const rows = db
         .prepare(
             `SELECT
@@ -172,6 +153,7 @@ export function getMonthlyOverview(accountId: number): MonthlySummary[] {
         )
         .all(accountId);
     const months: MonthlySummary[] = [];
+    const currency = getAccountCurrency(accountId);
     for (const row of rows) {
         if (
             typeof row.month !== "string" ||
