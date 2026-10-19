@@ -4,7 +4,7 @@ import type {
     Header,
     RawTransaction,
     Amount,
-    Transaction,
+    NewTransaction,
 } from "./types.ts";
 import { createHash } from "node:crypto";
 
@@ -149,8 +149,8 @@ function buildDedupHash(raw: RawTransaction): string {
     return createHash("sha256").update(raw.raw_line).digest("hex");
 }
 
-function rawToTransaction(raws: RawTransaction[]): Transaction[] {
-    const transactions: Transaction[] = [];
+function rawToTransaction(raws: RawTransaction[]): NewTransaction[] {
+    const transactions: NewTransaction[] = [];
     const dedupHashes = new Set();
     for (const raw of raws) {
         const dedupHash = buildDedupHash(raw);
@@ -177,7 +177,7 @@ function rawToTransaction(raws: RawTransaction[]): Transaction[] {
 
 export function parseCsv(path: string): {
     header: Header;
-    transactions: Transaction[];
+    transactions: NewTransaction[];
 } {
     const text = readExport(path);
     const rows = text.split("\n").map((row) => row.trimEnd());

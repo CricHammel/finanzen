@@ -1,9 +1,9 @@
 import { parseCsv } from "./parse-csv.ts";
-import type { Header, Transaction } from "./types.ts";
+import type { Header, NewTransaction } from "./types.ts";
 import { db } from "./db.ts";
 import { basename } from "node:path";
 
-function verifyBalance(header: Header, transactions: Transaction[]) {
+function verifyBalance(header: Header, transactions: NewTransaction[]) {
     if (
         !transactions[0] ||
         header.balance.cents !== transactions[0].balance.cents ||

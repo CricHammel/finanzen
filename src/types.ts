@@ -31,6 +31,8 @@ export type Amount = {
 };
 
 export type Transaction = {
+    id: number;
+    importId: number;
     booked: ISODate;
     valued: ISODate;
     applicantRecipient: string;
@@ -40,7 +42,21 @@ export type Transaction = {
     amount: Amount;
     dedupHash: string;
     rawLine: string;
+    categoryId: number | null;
+    categorySource: "rule" | "manual" | null;
+    appliedRuleId: number | null;
+    isInternal: boolean;
 };
+
+export type NewTransaction = Omit<
+    Transaction,
+    | "id"
+    | "importId"
+    | "categoryId"
+    | "categorySource"
+    | "appliedRuleId"
+    | "isInternal"
+>;
 
 export type Account = {
     id: number;
