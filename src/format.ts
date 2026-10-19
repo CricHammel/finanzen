@@ -1,6 +1,7 @@
 import type { Amount, ISODate, ISOMonth, MonthlySummary } from "./types.ts";
 
 const LOCALE = "de-DE";
+const TIMEZONE = "UTC";
 
 export function formatAmount(amount: Amount): string {
     return new Intl.NumberFormat(LOCALE, {
@@ -14,6 +15,7 @@ export function formatDate(date: ISODate): string {
         day: "numeric",
         month: "numeric",
         year: "numeric",
+        timeZone: TIMEZONE,
     }).format(new Date(date));
 }
 
@@ -21,6 +23,7 @@ export function formatMonth(month: ISOMonth): string {
     return new Intl.DateTimeFormat(LOCALE, {
         month: "long",
         year: "numeric",
+        timeZone: TIMEZONE,
     }).format(new Date(`${month}-01`));
 }
 
