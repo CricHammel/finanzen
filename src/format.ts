@@ -1,4 +1,4 @@
-import type { Amount, ISOMonth, MonthlySummary } from "./types.ts";
+import type { Amount, ISODate, ISOMonth, MonthlySummary } from "./types.ts";
 
 const LOCALE = "de-DE";
 
@@ -8,6 +8,15 @@ export function formatAmount(amount: Amount): string {
         currency: amount.currency,
     }).format(amount.cents / 100);
 }
+
+export function formatDate(date: ISODate): string {
+    return new Intl.DateTimeFormat(LOCALE, {
+        day: "numeric",
+        month: "numeric",
+        year: "numeric",
+    }).format(new Date(date));
+}
+
 export function formatMonth(month: ISOMonth): string {
     return new Intl.DateTimeFormat(LOCALE, {
         month: "long",

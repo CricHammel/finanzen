@@ -1,5 +1,5 @@
 import { db } from "./db.ts";
-import type { Account, Amount, MonthlySummary } from "./types.ts";
+import type { Account, Amount, MonthlySummary, Transaction } from "./types.ts";
 
 export function getAccounts(): Account[] {
     const rows = db.prepare("SELECT * FROM accounts").all();
@@ -61,9 +61,87 @@ export function getCurrentBalance(accountId: number): Amount {
         );
     }
     return {
-        cents: Number(row.balanceCents),
-        currency: String(row.currency),
+        cents: row.balanceCents,
+        currency: row.currency,
     };
+}
+
+export function getTransactions(
+    accountId: number,
+    limit: number | undefined,
+    sort: "ASC" | "DESC" | undefined,
+): Transaction[] {
+    const currencyRow = db
+        .prepare("SELECT currency FROM accounts WHERE id = ?")
+        .get(accountId);
+    if (!currencyRow) {
+        throw new Error(`Account with id ${accountId} not found`);
+    }
+    const currency = currencyRow.currency;
+    if (typeof currency !== "string") {
+        throw new Error(`Wrong database format for row: currency: ${currency}`);
+    }
+    let statement = "SELECT * FROM transactions WHERE accountId = ?";
+    if (sort !== undefined) {
+        statement += ` ORDER BY bookedOn ${sort}, dayPosition ${sort}`;
+    } else {
+        statement += " ORDER BY bookedOn, dayPosition";
+    }
+    let rows;
+    if (limit !== undefined) {
+        rows = db.prepare(statement + " LIMIT ?").all(accountId, limit);
+    } else {
+        rows = db.prepare(statement).all(accountId);
+    }
+    const transactions: Transaction[] = [];
+    for (const row of rows) {
+        if (
+            typeof row.id !== "number" ||
+            typeof row.importId !== "number" ||
+            typeof row.bookedOn !== "string" ||
+            typeof row.valuedOn !== "string" ||
+            typeof row.counterparty !== "string" ||
+            typeof row.bookingText !== "string" ||
+            typeof row.purpose !== "string" ||
+            typeof row.amountCents !== "number" ||
+            typeof row.balanceCents !== "number" ||
+            typeof row.dedupHash !== "string" ||
+            typeof row.rawLine !== "string" ||
+            !(typeof row.categoryId === "number" || row.categoryId === null) ||
+            !(
+                row.categorySource === "rule" ||
+                row.categorySource === "manual" ||
+                row.categorySource === null
+            ) ||
+            !(
+                typeof row.appliedRuleId === "number" ||
+                row.appliedRuleId === null
+            ) ||
+            !(row.isInternal === 0 || row.isInternal === 1)
+        ) {
+            throw new Error(
+                `Wrong database format for row: id: ${row.id}, importId: ${row.importId}, bookedOn: ${row.bookedOn}, valuedOn: ${row.valuedOn}, counterparty: ${row.counterparty}, bookingText: ${row.bookingText}, purpose: ${row.purpose}, amountCents: ${row.amountCents}, balanceCents: ${row.balanceCents}, dedupHash: ${row.dedupHash}, rawLine: ${row.rawLine}, categoryId: ${row.categoryId}, categorySource: ${row.categorySource}, appliedRuleId: ${row.appliedRuleId}, isInternal: ${row.isInternal}`,
+            );
+        }
+        transactions.push({
+            id: row.id,
+            importId: row.importId,
+            booked: row.bookedOn,
+            valued: row.valuedOn,
+            applicantRecipient: row.counterparty,
+            description: row.bookingText,
+            reason: row.purpose,
+            amount: { cents: row.amountCents, currency: currency },
+            balance: { cents: row.balanceCents, currency: currency },
+            dedupHash: row.dedupHash,
+            rawLine: row.rawLine,
+            categoryId: row.categoryId,
+            categorySource: row.categorySource,
+            appliedRuleId: row.appliedRuleId,
+            isInternal: Boolean(row.isInternal),
+        });
+    }
+    return transactions;
 }
 
 export function getMonthlyOverview(accountId: number): MonthlySummary[] {

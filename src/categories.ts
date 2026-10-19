@@ -48,7 +48,7 @@ export function getCategoryChildren(id: number): Category[] {
 }
 
 export function createCategory(newCategory: NewCategory): Category {
-    if (typeof newCategory.parentId === "number") {
+    if (newCategory.parentId !== null) {
         const parent = db
             .prepare("SELECT id FROM categories WHERE id = ?")
             .get(newCategory.parentId);
@@ -68,12 +68,7 @@ export function createCategory(newCategory: NewCategory): Category {
     }
     const id = db
         .prepare("INSERT INTO categories (name, parentId) VALUES (?, ?)")
-        .run(
-            newCategory.name,
-            typeof newCategory.parentId === "number"
-                ? newCategory.parentId
-                : null,
-        ).lastInsertRowid;
+        .run(newCategory.name, newCategory.parentId).lastInsertRowid;
     return {
         id: Number(id),
         name: newCategory.name,
