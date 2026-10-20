@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { createCategory, getCategories } from "./categories.ts";
+import { assignCategory, createCategory, getCategories } from "./categories.ts";
 import { formatAmount, formatDate, formatMonthlySummaries } from "./format.ts";
 import { importTransactions } from "./import.ts";
 import {
@@ -146,7 +146,7 @@ const COMMANDS: Command[] = [
                     }
                     getTransactions(id, limit, sort).forEach((t) => {
                         console.log(
-                            `${t.id} from/to "${t.applicantRecipient}", booked on ${formatDate(t.booked)}, amount: ${formatAmount(t.amount)}, balance after: ${formatAmount(t.balance)}`,
+                            `${t.id} from/to "${t.applicantRecipient}", booked on ${formatDate(t.booked)}, amount: ${formatAmount(t.amount)}, balance after: ${formatAmount(t.balance)}${t.categoryId ? `, category: ${t.categoryId} (${t.categorySource}${t.categorySource === "rule" ? `: ${t.appliedRuleId}` : ""})` : ""}`,
                         );
                     });
                 },
@@ -211,6 +211,23 @@ const COMMANDS: Command[] = [
                     console.log(
                         `New category created: ${c.id} ${c.name} ${c.parentId ? `(parent: ${c.parentId})` : "(no parent)"}`,
                     );
+                },
+            },
+            {
+                name: "assign",
+                description: "Assign a category to a transaction",
+                positionals: ["<transactionId>", "<categoryId>"],
+                options: {},
+                run: (pos) => {
+                    const transactionId = getPosNumber(
+                        pos,
+                        0,
+                        "transactionId",
+                        true,
+                    );
+                    const categoryId = getPosNumber(pos, 1, "categoryId", true);
+                    assignCategory(transactionId, categoryId, "manual");
+                    console.log("Category assigned successfully");
                 },
             },
         ],

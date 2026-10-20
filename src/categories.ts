@@ -75,3 +75,39 @@ export function createCategory(newCategory: NewCategory): Category {
         parentId: newCategory.parentId,
     };
 }
+
+export function assignCategory(
+    transactionId: number,
+    categoryId: number,
+    source: "rule" | "manual",
+    ruleId?: number,
+) {
+    const transactionRow = db
+        .prepare("SELECT * FROM transactions WHERE id = ?")
+        .get(transactionId);
+    const categoryRow = db
+        .prepare("SELECT * FROM categories WHERE id = ?")
+        .get(categoryId);
+    if (!transactionRow) {
+        throw new Error(`Transaction with id ${transactionId} not found`);
+    } else if (!categoryRow) {
+        throw new Error(`Category with id ${categoryId} not found`);
+    } else if (source === "rule") {
+        if (!ruleId) {
+            throw new Error("categorySource is rule, but no ruleId was given");
+        }
+        const ruleRow = db
+            .prepare("SELECT * FROM rules WHERE id = ?")
+            .get(ruleId);
+        if (!ruleRow) {
+            throw new Error(`Rule with id ${ruleId} not found`);
+        }
+        db.prepare(
+            "UPDATE transactions SET categoryId = ?, categorySource = ?, appliedRuleId = ? WHERE id = ?",
+        ).run(categoryId, source, ruleId, transactionId);
+        return;
+    }
+    db.prepare(
+        "UPDATE transactions SET categoryId = ?, categorySource = ? WHERE id = ?",
+    ).run(categoryId, source, transactionId);
+}
