@@ -68,8 +68,8 @@ export function getCurrentBalance(accountId: number): Amount {
 
 export function getTransactions(
     accountId: number,
-    limit: number | undefined,
-    sort: "ASC" | "DESC" | undefined,
+    limit?: number,
+    sort?: "ASC" | "DESC",
 ): Transaction[] {
     let statement = "SELECT * FROM transactions WHERE accountId = ?";
     if (sort !== undefined) {
