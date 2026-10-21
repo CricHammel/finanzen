@@ -92,6 +92,8 @@ export function assignCategory(
         throw new Error(`Transaction with id ${transactionId} not found`);
     } else if (!categoryRow) {
         throw new Error(`Category with id ${categoryId} not found`);
+    } else if (source === "manual" && typeof ruleId !== "undefined") {
+        throw new Error("categorySource is manual, but a ruleId was given");
     } else if (source === "rule") {
         if (!ruleId) {
             throw new Error("categorySource is rule, but no ruleId was given");
