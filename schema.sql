@@ -26,10 +26,11 @@ CREATE TABLE categories (
 
 CREATE TABLE rules (
   id INTEGER PRIMARY KEY,
-  matchField TEXT NOT NULL,
+  matchType TEXT NOT NULL CHECK (matchType IN ('contains', 'equals', 'startsWith')),
+  matchField TEXT NOT NULL CHECK (matchField IN ('counterparty', 'bookingText', 'purpose')),
   matchValue TEXT NOT NULL,
   categoryId INTEGER REFERENCES categories(id) NOT NULL,
-  sortOrder INTEGER NOT NULL,
+  priority INTEGER NOT NULL,
   isActive INTEGER NOT NULL CHECK (isActive IN (0, 1))
 ) STRICT;
 

@@ -100,3 +100,15 @@ export type CommandGroup = {
 };
 
 export type Command = CommandLeaf | CommandGroup;
+
+export type Rule = {
+    id: number;
+    matchType: "contains" | "equals" | "startsWith";
+    matchField: "counterparty" | "bookingText" | "purpose";
+    matchValue: string;
+    categoryId: number;
+    priority: number;
+    isActive: boolean;
+};
+
+export type NewRule = Omit<Rule, "id" | "priority" | "isActive">;

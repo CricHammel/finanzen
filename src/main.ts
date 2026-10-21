@@ -9,6 +9,7 @@ import {
     getTransactions,
 } from "./query.ts";
 import type { Command, CommandLeaf } from "./types.ts";
+import { createRule, getRules, sortRule, toggleRule } from "./rules.ts";
 
 function getPosString(pos: string[], i: number, name: string): string {
     const v = pos[i];
@@ -228,6 +229,100 @@ const COMMANDS: Command[] = [
                     const categoryId = getPosNumber(pos, 1, "categoryId", true);
                     assignCategory(transactionId, categoryId, "manual");
                     console.log("Category assigned successfully");
+                },
+            },
+        ],
+    },
+    {
+        name: "rules",
+        subcommands: [
+            {
+                name: "list",
+                description: "List rules",
+                positionals: [],
+                options: {},
+                run: () => {
+                    getRules().forEach((r) => {
+                        console.log(
+                            `${r.id} ${r.matchField} ${r.matchType} "${r.matchValue}" (priority: ${r.priority}, active: ${r.isActive})`,
+                        );
+                    });
+                },
+            },
+            {
+                name: "create",
+                description: "Create a new rule",
+                positionals: [
+                    "<matchField>",
+                    "<matchType>",
+                    "<matchValue>",
+                    "<categoryId>",
+                ],
+                options: {},
+                run: (pos) => {
+                    const matchField = getPosString(pos, 0, "matchField");
+                    const matchType = getPosString(pos, 1, "matchType");
+                    const matchValue = getPosString(pos, 2, "matchValue");
+                    const categoryId = getPosNumber(pos, 3, "categoryId", true);
+                    if (
+                        !(
+                            matchField === "counterparty" ||
+                            matchField === "bookingText" ||
+                            matchField === "purpose"
+                        )
+                    ) {
+                        throw new Error(
+                            `Wrong usage!\nmatchField must be counterparty|bookingText|purpose`,
+                        );
+                    } else if (
+                        !(
+                            matchType === "contains" ||
+                            matchType === "equals" ||
+                            matchType === "startsWith"
+                        )
+                    ) {
+                        throw new Error(
+                            `Wrong usage!\nmatchType must be contains|equals|startsWith`,
+                        );
+                    }
+                    const r = createRule({
+                        matchField: matchField,
+                        matchType: matchType,
+                        matchValue: matchValue,
+                        categoryId: categoryId,
+                    });
+                    console.log(
+                        `Rule created: ${r.id} ${r.matchField} ${r.matchType} "${r.matchValue}" (priority: ${r.priority}, active: ${r.isActive})`,
+                    );
+                },
+            },
+            {
+                name: "toggle",
+                description: "Toggle whether a rule is active",
+                positionals: ["<ruleId>"],
+                options: {},
+                run: (pos) => {
+                    const ruleId = getPosNumber(pos, 0, "ruleId", true);
+                    console.log(
+                        `Set rule ${ruleId} to ${toggleRule(ruleId) ? "active" : "inactive"}`,
+                    );
+                },
+            },
+            {
+                name: "sort",
+                description: "Change the priority of a rule",
+                positionals: ["ruleId"],
+                options: {
+                    beforeId: { type: "string" },
+                    afterId: { type: "string" },
+                },
+                run: (pos, values) => {
+                    const ruleId = getPosNumber(pos, 0, "ruleId", true);
+                    const beforeId = getOptNumber(values, "beforeId", true);
+                    const afterId = getOptNumber(values, "afterId", true);
+                    console.log(
+                        `Set priority of rule ${ruleId} to ${sortRule(ruleId, beforeId, afterId)}`,
+                    );
                 },
             },
         ],
