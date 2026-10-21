@@ -104,14 +104,10 @@ export function assignCategory(
         if (!ruleRow) {
             throw new Error(`Rule with id ${ruleId} not found`);
         }
-        db.prepare(
-            "UPDATE transactions SET categoryId = ?, categorySource = ?, appliedRuleId = ? WHERE id = ?",
-        ).run(categoryId, source, ruleId, transactionId);
-        return;
     }
     db.prepare(
-        "UPDATE transactions SET categoryId = ?, categorySource = ? WHERE id = ?",
-    ).run(categoryId, source, transactionId);
+        "UPDATE transactions SET categoryId = ?, categorySource = ?, appliedRuleId = ? WHERE id = ?",
+    ).run(categoryId, source, ruleId ?? null, transactionId);
 }
 
 export function unassignCategory(transactionId: number) {
