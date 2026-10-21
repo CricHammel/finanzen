@@ -17,6 +17,7 @@ import type { Command, CommandLeaf } from "./types.ts";
 import {
     applyRules,
     createRule,
+    deleteRule,
     getRules,
     sortRule,
     toggleRule,
@@ -347,6 +348,17 @@ const COMMANDS: Command[] = [
                     console.log(
                         `Set priority of rule ${ruleId} to ${sortRule(ruleId, beforeId, afterId)}`,
                     );
+                },
+            },
+            {
+                name: "delete",
+                description: "Delete a rule",
+                positionals: ["<ruleId>"],
+                options: {},
+                run: (pos) => {
+                    const ruleId = getPosNumber(pos, 0, "ruleId");
+                    deleteRule(ruleId);
+                    console.log(`Rule ${ruleId} deleted successfuly`);
                 },
             },
             {

@@ -158,6 +158,18 @@ export function sortRule(
     return indexTo + 1;
 }
 
+export function deleteRule(ruleId: number) {
+    const rules = getRules();
+    if (!rules.find((r) => r.id === ruleId)) {
+        throw new Error(`Rule with id ${ruleId} not found`);
+    }
+    db.prepare(
+        "UPDATE transactions SET categoryId = NULL, categorySource = NULL, appliedRuleId = NULL WHERE appliedRuleId = ?",
+    ).run(ruleId);
+    db.prepare("DELETE FROM rules WHERE id = ?").run(ruleId);
+    setPriority(rules.filter((r) => r.id !== ruleId).map((r) => r.id));
+}
+
 function matches(rule: Rule, transaction: Transaction): boolean {
     if (!rule.isActive) {
         return false;
