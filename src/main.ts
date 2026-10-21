@@ -1,5 +1,10 @@
 import { parseArgs } from "node:util";
-import { assignCategory, createCategory, getCategories } from "./categories.ts";
+import {
+    assignCategory,
+    createCategory,
+    getCategories,
+    unassignCategory,
+} from "./categories.ts";
 import { formatAmount, formatDate, formatMonthlySummaries } from "./format.ts";
 import { importTransactions } from "./import.ts";
 import {
@@ -229,6 +234,19 @@ const COMMANDS: Command[] = [
                     const categoryId = getPosNumber(pos, 1, "categoryId", true);
                     assignCategory(transactionId, categoryId, "manual");
                     console.log("Category assigned successfully");
+                },
+            },
+            {
+                name: "unassign",
+                description: "Unassign any categories from a transaction",
+                positionals: ["<transactionId>"],
+                options: {},
+                run: (pos) => {
+                    const transactionId = getPosNumber(pos, 0, "transactionId");
+                    unassignCategory(transactionId);
+                    console.log(
+                        `Unassigned category from transaction ${transactionId}`,
+                    );
                 },
             },
         ],

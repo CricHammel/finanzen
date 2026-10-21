@@ -113,3 +113,15 @@ export function assignCategory(
         "UPDATE transactions SET categoryId = ?, categorySource = ? WHERE id = ?",
     ).run(categoryId, source, transactionId);
 }
+
+export function unassignCategory(transactionId: number) {
+    const transactionRow = db
+        .prepare("SELECT * FROM transactions WHERE id = ?")
+        .get(transactionId);
+    if (!transactionRow) {
+        throw new Error(`Transaction with id ${transactionId} not found`);
+    }
+    db.prepare(
+        "UPDATE transactions SET categoryId = NULL, categorySource = NULL, appliedRuleId = NULL WHERE id = ?",
+    ).run(transactionId);
+}
