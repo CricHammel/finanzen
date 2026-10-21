@@ -30,7 +30,7 @@ CREATE TABLE rules (
   matchField TEXT NOT NULL CHECK (matchField IN ('counterparty', 'bookingText', 'purpose')),
   matchValue TEXT NOT NULL,
   categoryId INTEGER REFERENCES categories(id) NOT NULL,
-  priority INTEGER NOT NULL,
+  priority INTEGER NOT NULL UNIQUE,
   isActive INTEGER NOT NULL CHECK (isActive IN (0, 1))
 ) STRICT;
 

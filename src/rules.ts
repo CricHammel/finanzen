@@ -1,6 +1,8 @@
 import type { SQLOutputValue } from "node:sqlite";
+import { assignCategory } from "./categories.ts";
 import { db } from "./db.ts";
-import type { NewRule, Rule } from "./types.ts";
+import { getTransactions } from "./query.ts";
+import type { NewRule, Rule, Transaction } from "./types.ts";
 
 function rowToRule(row: Record<string, SQLOutputValue>): Rule {
     if (
@@ -154,4 +156,79 @@ export function sortRule(
     ids.splice(indexTo, 0, ruleId);
     setPriority(ids);
     return indexTo + 1;
+}
+
+function matches(rule: Rule, transaction: Transaction): boolean {
+    if (!rule.isActive) {
+        return false;
+    }
+    let field: string;
+    switch (rule.matchField) {
+        case "bookingText": {
+            field = transaction.description;
+            break;
+        }
+        case "counterparty": {
+            field = transaction.applicantRecipient;
+            break;
+        }
+        case "purpose": {
+            field = transaction.reason;
+            break;
+        }
+    }
+    field = field.toLowerCase();
+    const value = rule.matchValue.toLowerCase();
+    switch (rule.matchType) {
+        case "contains": {
+            return field.includes(value);
+        }
+        case "equals": {
+            return field === value;
+        }
+        case "startsWith": {
+            return field.startsWith(value);
+        }
+    }
+}
+
+function findMatchingRule(
+    rules: Rule[],
+    transaction: Transaction,
+): Rule | undefined {
+    for (const rule of rules) {
+        if (matches(rule, transaction)) {
+            return rule;
+        }
+    }
+}
+
+export function applyRules(accountId: number) {
+    const rules = getRules();
+    const transactions = getTransactions(accountId);
+    try {
+        db.exec("BEGIN");
+        db.prepare(
+            "UPDATE transactions SET categoryId = NULL, categorySource = NULL, appliedRuleId = NULL WHERE accountId = ? AND categorySource IS 'rule'",
+        ).run(accountId);
+        for (const t of transactions) {
+            if (t.categorySource === "manual") {
+                continue;
+            }
+            const matchingRule = findMatchingRule(rules, t);
+            if (!matchingRule) {
+                continue;
+            }
+            assignCategory(
+                t.id,
+                matchingRule.categoryId,
+                "rule",
+                matchingRule.id,
+            );
+        }
+        db.exec("COMMIT");
+    } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
+    }
 }

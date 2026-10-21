@@ -14,7 +14,13 @@ import {
     getTransactions,
 } from "./query.ts";
 import type { Command, CommandLeaf } from "./types.ts";
-import { createRule, getRules, sortRule, toggleRule } from "./rules.ts";
+import {
+    applyRules,
+    createRule,
+    getRules,
+    sortRule,
+    toggleRule,
+} from "./rules.ts";
 
 function getPosString(pos: string[], i: number, name: string): string {
     const v = pos[i];
@@ -329,7 +335,7 @@ const COMMANDS: Command[] = [
             {
                 name: "sort",
                 description: "Change the priority of a rule",
-                positionals: ["ruleId"],
+                positionals: ["<ruleId>"],
                 options: {
                     beforeId: { type: "string" },
                     afterId: { type: "string" },
@@ -341,6 +347,18 @@ const COMMANDS: Command[] = [
                     console.log(
                         `Set priority of rule ${ruleId} to ${sortRule(ruleId, beforeId, afterId)}`,
                     );
+                },
+            },
+            {
+                name: "apply",
+                description:
+                    "Apply the rules to all transactions of an account",
+                positionals: ["<accountId>"],
+                options: {},
+                run: (pos) => {
+                    const accountId = getPosNumber(pos, 0, "accountId", true);
+                    applyRules(accountId);
+                    console.log("Rules applied successfully");
                 },
             },
         ],
