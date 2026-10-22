@@ -70,8 +70,14 @@ export function getTransactions(
     accountId: number,
     limit?: number,
     sort?: "ASC" | "DESC",
+    categoryId?: number | "none",
 ): Transaction[] {
     let statement = "SELECT * FROM transactions WHERE accountId = ?";
+    if (typeof categoryId === "number") {
+        statement += " AND categoryId = ?";
+    } else if (categoryId === "none") {
+        statement += " AND categoryId IS NULL";
+    }
     if (sort !== undefined) {
         statement += ` ORDER BY bookedOn ${sort}, dayPosition ${sort}`;
     } else {
@@ -79,9 +85,18 @@ export function getTransactions(
     }
     let rows;
     if (limit !== undefined) {
-        rows = db.prepare(statement + " LIMIT ?").all(accountId, limit);
+        statement += " LIMIT ?";
+        if (typeof categoryId === "number") {
+            rows = db.prepare(statement).all(accountId, categoryId, limit);
+        } else {
+            rows = db.prepare(statement).all(accountId, limit);
+        }
     } else {
-        rows = db.prepare(statement).all(accountId);
+        if (typeof categoryId === "number") {
+            rows = db.prepare(statement).all(accountId, categoryId);
+        } else {
+            rows = db.prepare(statement).all(accountId);
+        }
     }
     const transactions: Transaction[] = [];
     const currency = getAccountCurrency(accountId);

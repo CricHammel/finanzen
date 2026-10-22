@@ -141,6 +141,9 @@ const COMMANDS: Command[] = [
                     sort: {
                         type: "string",
                     },
+                    categoryId: {
+                        type: "string",
+                    },
                 },
                 run: (pos, values) => {
                     const id = getPosNumber(pos, 0, "accountId", true);
@@ -157,11 +160,29 @@ const COMMANDS: Command[] = [
                             `Wrong usage!\nsort must be 'ASC' or 'DESC'`,
                         );
                     }
-                    getTransactions(id, limit, sort).forEach((t) => {
-                        console.log(
-                            `${t.id} from/to "${t.applicantRecipient}", booked on ${formatDate(t.booked)}, amount: ${formatAmount(t.amount)}, balance after: ${formatAmount(t.balance)}${t.categoryId ? `, category: ${t.categoryId} (${t.categorySource}${t.categorySource === "rule" ? `: ${t.appliedRuleId}` : ""})` : ""}`,
+                    let categoryId: number | "none" | undefined;
+                    if (
+                        typeof values.categoryId === "string" &&
+                        values.categoryId === "none"
+                    ) {
+                        categoryId = values.categoryId;
+                    } else if (
+                        typeof values.categoryId === "string" &&
+                        !Number.isNaN(Number(values.categoryId))
+                    ) {
+                        categoryId = getOptNumber(values, "categoryId", true);
+                    } else if (values.categoryId !== undefined) {
+                        throw new Error(
+                            `Wrong usage! categoryId must be a positive integer or 'none'`,
                         );
-                    });
+                    }
+                    getTransactions(id, limit, sort, categoryId).forEach(
+                        (t) => {
+                            console.log(
+                                `${t.id} from/to "${t.applicantRecipient}", booked on ${formatDate(t.booked)}, amount: ${formatAmount(t.amount)}, balance after: ${formatAmount(t.balance)}${t.categoryId ? `, category: ${t.categoryId} (${t.categorySource}${t.categorySource === "rule" ? `: ${t.appliedRuleId}` : ""})` : ""}`,
+                            );
+                        },
+                    );
                 },
             },
         ],
