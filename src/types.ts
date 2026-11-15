@@ -69,11 +69,21 @@ export type Account = {
     currency: string;
 };
 
-export type MonthlySummary = {
-    month: ISOMonth;
+export type SummaryGroup = {
     income: Amount;
     expenses: Amount;
     total: Amount;
+};
+
+export type MonthlySummary = {
+    month: ISOMonth;
+} & SummaryGroup;
+
+export type CategorySummary = {
+    categoryId: number | null;
+    name: string;
+    direct: SummaryGroup;
+    recursive: SummaryGroup;
 };
 
 export type Category = {

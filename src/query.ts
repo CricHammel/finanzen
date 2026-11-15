@@ -1,5 +1,13 @@
+import type { SQLOutputValue } from "node:sqlite";
+import { getCategory } from "./categories.ts";
 import { db } from "./db.ts";
-import type { Account, Amount, MonthlySummary, Transaction } from "./types.ts";
+import type {
+    Account,
+    Amount,
+    CategorySummary,
+    MonthlySummary,
+    Transaction,
+} from "./types.ts";
 
 export function getAccounts(): Account[] {
     const rows = db.prepare("SELECT * FROM accounts").all();
@@ -161,7 +169,8 @@ export function getMonthlyOverview(accountId: number): MonthlySummary[] {
                 COALESCE(
                     SUM(amountCents) FILTER (WHERE amountCents > 0), 0
                 ) AS income,
-                SUM(amountCents) AS total FROM transactions
+                SUM(amountCents) AS total
+            FROM transactions
             WHERE accountId = ?
             GROUP BY substr(bookedOn, 1, 7)
             ORDER BY bookedOn`,
@@ -197,4 +206,138 @@ export function getMonthlyOverview(accountId: number): MonthlySummary[] {
         });
     }
     return months;
+}
+
+export function getCategoryOverview(
+    accountId: number,
+    categoryId?: number | "none",
+): CategorySummary[] {
+    const where = categoryId === undefined ? "" : "WHERE categories.id = ?";
+    const recursive = `
+        WITH RECURSIVE tree(rootId, id) AS (
+            SELECT
+                id,
+                id
+            FROM categories
+            UNION
+            SELECT
+                tree.rootId,
+                categories.id
+            FROM categories
+            JOIN tree ON categories.parentId = tree.id
+        )
+        SELECT
+            categories.id AS categoryId,
+            categories.name AS name,
+            COALESCE(
+                SUM(transactions.amountCents) FILTER (WHERE transactions.amountCents < 0), 0
+            ) AS expenses_recursive,
+            COALESCE(
+                SUM(transactions.amountCents) FILTER (WHERE transactions.amountCents < 0 AND transactions.categoryId = categories.id), 0
+            ) AS expenses_direct,
+            COALESCE(
+                SUM(transactions.amountCents) FILTER (WHERE transactions.amountCents > 0), 0
+            ) AS income_recursive,
+            COALESCE(
+                SUM(transactions.amountCents) FILTER (WHERE transactions.amountCents > 0 AND transactions.categoryId = categories.id), 0
+            ) AS income_direct,
+            COALESCE(
+                SUM(transactions.amountCents), 0
+            ) AS total_recursive,
+            COALESCE(
+                SUM(transactions.amountCents) FILTER (WHERE transactions.categoryId = categories.id), 0
+            ) AS total_direct
+        FROM categories
+        JOIN tree ON tree.rootId = categories.id
+        LEFT JOIN transactions ON transactions.categoryId = tree.id AND transactions.accountId = ?
+        ${where}
+        GROUP BY categories.id
+        ORDER BY total_recursive DESC`;
+    const direct = `SELECT
+                    NULL AS categoryId,
+                    'no category' AS name,
+                    COALESCE(
+                        SUM(amountCents) FILTER (WHERE amountCents < 0), 0
+                    ) AS expenses_recursive,
+                    COALESCE(
+                        SUM(amountCents) FILTER (WHERE amountCents < 0), 0
+                    ) AS expenses_direct,
+                    COALESCE(
+                        SUM(amountCents) FILTER (WHERE amountCents > 0), 0
+                    ) AS income_recursive,
+                    COALESCE(
+                        SUM(amountCents) FILTER (WHERE amountCents > 0), 0
+                    ) AS income_direct,
+                    COALESCE(
+                        SUM(amountCents), 0
+                    ) AS total_recursive,
+                    COALESCE(
+                        SUM(amountCents), 0
+                    ) AS total_direct
+                    FROM transactions
+                    WHERE accountId = ? AND categoryId IS NULL
+                    HAVING COUNT(*) > 0`;
+    let rows: Record<string, SQLOutputValue>[];
+    if (typeof categoryId === "number") {
+        getCategory(categoryId);
+        rows = db.prepare(recursive).all(accountId, categoryId);
+    } else if (categoryId === "none") {
+        rows = db.prepare(direct).all(accountId);
+    } else {
+        rows = [
+            ...db.prepare(recursive).all(accountId),
+            ...db.prepare(direct).all(accountId),
+        ];
+    }
+    const categories: CategorySummary[] = [];
+    const currency = getAccountCurrency(accountId);
+    for (const row of rows) {
+        if (
+            !(typeof row.categoryId === "number" || row.categoryId === null) ||
+            typeof row.name !== "string" ||
+            typeof row.income_recursive !== "number" ||
+            typeof row.income_direct !== "number" ||
+            typeof row.expenses_recursive !== "number" ||
+            typeof row.expenses_direct !== "number" ||
+            typeof row.total_recursive !== "number" ||
+            typeof row.total_direct !== "number"
+        ) {
+            throw new Error(
+                `Wrong database format for row: categoryId: ${row.categoryId}, name: ${row.name}, income_recursive: ${row.income_recursive}, income_direct: ${row.income_direct}, expenses_recursive: ${row.expenses_recursive}, expenses_direct: ${row.expenses_direct}, total_recursive: ${row.total_recursive}, total_direct: ${row.total_direct}`,
+            );
+        }
+        categories.push({
+            categoryId: row.categoryId,
+            name: row.name,
+            recursive: {
+                income: {
+                    cents: row.income_recursive,
+                    currency: currency,
+                },
+                expenses: {
+                    cents: row.expenses_recursive,
+                    currency: currency,
+                },
+                total: {
+                    cents: row.total_recursive,
+                    currency: currency,
+                },
+            },
+            direct: {
+                income: {
+                    cents: row.income_direct,
+                    currency: currency,
+                },
+                expenses: {
+                    cents: row.expenses_direct,
+                    currency: currency,
+                },
+                total: {
+                    cents: row.total_direct,
+                    currency: currency,
+                },
+            },
+        });
+    }
+    return categories;
 }

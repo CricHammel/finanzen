@@ -5,10 +5,16 @@ import {
     getCategories,
     unassignCategory,
 } from "./categories.ts";
-import { formatAmount, formatDate, formatMonthlySummaries } from "./format.ts";
+import {
+    formatAmount,
+    formatCategorySummaries,
+    formatDate,
+    formatMonthlySummaries,
+} from "./format.ts";
 import { importTransactions } from "./import.ts";
 import {
     getAccounts,
+    getCategoryOverview,
     getCurrentBalance,
     getMonthlyOverview,
     getTransactions,
@@ -73,6 +79,32 @@ function getOptNumber(
         throw new Error(`Type error: ${values[name]}`);
     }
     return n;
+}
+
+function isSame<T extends string>(expected: T, x: unknown): x is T {
+    return x === expected;
+}
+
+function getOptNumberOrString<T extends string>(
+    values: Record<string, unknown>,
+    name: string,
+    isPositive: boolean,
+    string: T,
+): number | T | undefined {
+    let value: number | T | undefined;
+    if (isSame(string, values[name])) {
+        value = values[name];
+    } else if (
+        typeof values[name] === "string" &&
+        !Number.isNaN(Number(values[name]))
+    ) {
+        value = getOptNumber(values, name, isPositive);
+    } else if (values[name] !== undefined) {
+        throw new Error(
+            `Wrong usage! ${name} must be a positive integer or 'none'`,
+        );
+    }
+    return value;
 }
 
 function getCommandDescription(command: Command): string {
@@ -160,22 +192,12 @@ const COMMANDS: Command[] = [
                             `Wrong usage!\nsort must be 'ASC' or 'DESC'`,
                         );
                     }
-                    let categoryId: number | "none" | undefined;
-                    if (
-                        typeof values.categoryId === "string" &&
-                        values.categoryId === "none"
-                    ) {
-                        categoryId = values.categoryId;
-                    } else if (
-                        typeof values.categoryId === "string" &&
-                        !Number.isNaN(Number(values.categoryId))
-                    ) {
-                        categoryId = getOptNumber(values, "categoryId", true);
-                    } else if (values.categoryId !== undefined) {
-                        throw new Error(
-                            `Wrong usage! categoryId must be a positive integer or 'none'`,
-                        );
-                    }
+                    const categoryId = getOptNumberOrString(
+                        values,
+                        "categoryId",
+                        true,
+                        "none",
+                    );
                     getTransactions(id, limit, sort, categoryId).forEach(
                         (t) => {
                             console.log(
@@ -275,6 +297,37 @@ const COMMANDS: Command[] = [
                     console.log(
                         `Unassigned category from transaction ${transactionId}`,
                     );
+                },
+            },
+            {
+                name: "summary",
+                description: "Get a summary for the transactions in a category",
+                positionals: ["<accountId>"],
+                options: {
+                    categoryId: {
+                        type: "string",
+                    },
+                },
+                run: (pos, values) => {
+                    const accountId = getPosNumber(pos, 0, "accountId", true);
+                    const categoryId = getOptNumberOrString(
+                        values,
+                        "categoryId",
+                        true,
+                        "none",
+                    );
+                    const summaries = getCategoryOverview(
+                        accountId,
+                        categoryId,
+                    );
+                    formatCategorySummaries(summaries).forEach((s) => {
+                        console.log(s);
+                    });
+                    if (summaries.length === 0) {
+                        console.log(
+                            `${categoryId === undefined ? "Categories contain" : `Category ${categoryId} contains`} no transactions`,
+                        );
+                    }
                 },
             },
         ],
